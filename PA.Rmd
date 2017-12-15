@@ -1,3 +1,9 @@
+---
+output: 
+  html_document:
+    keep_md: true
+---
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(randomForest)
@@ -8,27 +14,36 @@ library(ggplot2)
 
 # Research on "How Well Your Exercises Are"
 
-## Introduction
+### Introduction
 The data for this project come from [Human Activity Recognition (HAR)](http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har). Thank you for data sharing!  
 The training data for this project are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv).  
 The test data are available [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv).  
 **Reference**    
 Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013. 
 
-## Executive Summary
-The workflow of this project is described as below:  
-(1) Data Download;  
-(2) Data load and cleaning;  
-(3) Data standardization;  
-(4) Exploratory analysis;  
-(5) Build predictive model with training dataset using random Forest;  
-(6) Predict Testing (20) samples.  
+### Executive Summary
+The workflow of this project is described as below:   
 
-* Since the performance on the validation dataset is quite good as performed, we didn't fine tuning our predictive model any more.  
+1. Data Download;
+2. Data load and cleaning;  
+3. Data standardization;  
+4. Exploratory analysis;  
+5. Build predictive model with training dataset using random Forest;  
+- First, we decide to Normalize the training dataset based on individuals to eliminate the influence from person;   
+- Second, we used RandomForest algorithm to train a model based on Training Dataset;  
+- Third, we used the trained model to predict normalized validating dataset and draw the confusion matrix;    
+*Since the performance on the validation dataset is quite good as performed, we didn't fine tuning our predictive model any more.*   
 
+6. Predict Testing (20) samples.  
 
-## Data Download
-``` {r cache=T}
+ 
+
+**Conclusion:**  
+The Accuracy based on validation dataset is `0.992`, which indicate the model performance is pretty good.  
+The prediction result of 20 extra samples are shown at the last section and past the following exam.  
+
+### Data Download
+``` {r, cache=T}
 rm(list=ls())
 if (!file.exists('./PA_train.csv')){
   file_url <- 'https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv'
@@ -40,8 +55,8 @@ download.file(file_url,'./PA_test.csv')
 }
 ```
 
-## Data Load and standardization
-``` {r cache=T}
+### Data Load and standardization
+``` {r, cache=T}
 training <- read.csv('PA_train.csv',na.strings = c("","NA"))
 testing <- read.csv('PA_test.csv',na.strings = c("","NA"))
 # filter out new Window data in training set (which is not contained in test dataset)
@@ -58,8 +73,8 @@ testing_fin <- testing[,-nonfeat_col]
 head(training_fin[,c(1:4,ncol(training_fin))])
 ```
 
-## Data normalization
-```{r, cache=T}
+### Data normalization
+```{r, cache=T, warning=FALSE}
 set.seed(1122) # fix random seed for reproducible reason
 performance_metrics=NULL
 inTraining <- sample(nrow(training_fin), 0.6*nrow(training_fin))
@@ -81,16 +96,19 @@ for (i in 1:length(person_name)){
 }
 ```
 
-## Explortary Analysis
+### Explortary Analysis
 With the PCA plot(*Appendix Plot-1*), we can see the training samples are well distributed across the axis and were not significantly separated by individuals.  
 
 We Need to Make sure that individual influence didn't influence the dataset. if we not doing this step, the predicting performance would be heavily influenced. See *Appendix Plot-2*.
 
 
-## Build Random Forest Model 
+### Build Random Forest Model 
 ``` {r, cache=T}
 # build random Forest Model
 model_rf = randomForest(classe~., data=data_train_norm_all)
+```
+### Evaluate Model Performance on Validating Dataset
+```{r, cache=T, comment=""}
 # do prediction
 pred_rf = predict(model_rf, data_vali_norm_all)
 # Get performance in general
@@ -98,15 +116,16 @@ c1 = confusionMatrix(pred_rf, data_vali_norm_all$classe)
 c1$table
 c1$overall
 ```
-## Predict extra samples
-``` {r}
+### Predict extra samples
+``` {r, cache=T, comment=""}
 pred_test = predict(model_rf, data_test_norm_all)
 result_matrix = as.matrix(pred_test)
 result_matrix[order(as.integer(rownames(result_matrix))),]
 ```
+  
 
-##  Appendix Plot-1
-``` {r}
+###  Appendix Plot-1
+``` {r, cache=T}
 # Principal Component extraction  
 pcn_proc = preProcess(data_train_norm_all, method= "pca", thresh=.9)
 data_train_pc = predict(pcn_proc, data_train_norm_all)
@@ -116,9 +135,9 @@ g <- ggplot(data_train_pc, aes(x=PC1, y=PC2)) + geom_point(aes(color=user_name))
 g
 ```
 
-## Appendix Plot-2
+### Appendix Plot-2
 If we didn't consider the personal difference, the dataset would cluster like following:  
-``` {r}
+``` {r, cache=T}
 norm_proc_2 = preProcess(data_train,method = c("center", "scale","pca"))
 data_train_norm_2 = predict(norm_proc_2, data_train)
 g <- ggplot(data_train_norm_2, aes(x=PC1, y=PC2)) + geom_point(aes(color=user_name))
